@@ -1,7 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, FlatList, TouchableOpacity, Modal, TextInput, Button, Alert, StyleSheet } from 'react-native';
-import { getData, saveData } from '../services/storage';
+import {
+  getProdutos,
+  updateProduto,
+  deleteProduto,
+  addMovimentacao
+} from '../services/storage';
 
 export default function VisualizarScreen() {
   const [produtos, setProdutos] = useState([]);
@@ -10,18 +15,13 @@ export default function VisualizarScreen() {
   const [quantidadeMovimentar, setQuantidadeMovimentar] = useState('');
 
   useFocusEffect(
-  useCallback(() => {
-    const carregarProdutos = async () => {
-      const dados = await getData('produtos');
-      setProdutos(dados);
-    };
-    carregarProdutos();
-  }, [])
-);
-
+    useCallback(() => {
+      carregarProdutos();
+    }, [])
+  );
 
   const carregarProdutos = async () => {
-    const lista = await getData('produtos') || [];
+    const lista = await getProdutos();
     setProdutos(lista);
   };
 
@@ -38,59 +38,55 @@ export default function VisualizarScreen() {
       return;
     }
 
-    const novaLista = produtos.map((p) => {
-      if (p.id === produtoSelecionado.id) {
-        const novaQtd = tipo === 'entrada' ? p.quantidade + qtd : p.quantidade - qtd;
-        if (novaQtd < 0) {
-          Alert.alert('Estoque insuficiente.');
-          return p;
-        }
-        return { ...p, quantidade: novaQtd };
-      }
-      return p;
-    });
+    const produto = produtos.find(p => p.id === produtoSelecionado.id);
+    const novaQtd = tipo === 'entrada'
+      ? produto.quantidade + qtd
+      : produto.quantidade - qtd;
 
-    setProdutos(novaLista);
-    await saveData('produtos', novaLista);
+    if (novaQtd < 0) {
+      Alert.alert('Estoque insuficiente.');
+      return;
+    }
 
-    // Registrar movimentação
-    const movimentacoes = await getData('movimentacoes') || [];
-    movimentacoes.push({
-      id: Date.now().toString(),
+    
+    await updateProduto(produto.id, { quantidade: novaQtd });
+
+    
+    await addMovimentacao({
       tipo,
-      produtoId: produtoSelecionado.id,
-      produtoNome: produtoSelecionado.nome,
-      quantidade: qtd,
-      data: new Date().toISOString()
+      produtoId: produto.id,
+      produtoNome: produto.nome,
+      quantidade: qtd
     });
-    await saveData('movimentacoes', movimentacoes);
 
     Alert.alert('Movimentação registrada!');
     setModalVisible(false);
     setProdutoSelecionado(null);
+
+   
+    carregarProdutos();
   };
 
   const removerProduto = () => {
-  Alert.alert(
-    "Confirmar exclusão",
-    `Deseja realmente remover o produto "${produtoSelecionado?.nome}"?`,
-    [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        style: "destructive",
-        onPress: async () => {
-          const novaLista = produtos.filter(p => p.id !== produtoSelecionado.id);
-          setProdutos(novaLista);
-          await saveData('produtos', novaLista);
-          Alert.alert('Produto removido com sucesso!');
-          setModalVisible(false);
-          setProdutoSelecionado(null);
+    Alert.alert(
+      "Confirmar exclusão",
+      `Deseja realmente remover o produto "${produtoSelecionado?.nome}"?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: async () => {
+            await deleteProduto(produtoSelecionado.id);
+            Alert.alert('Produto removido com sucesso!');
+            setModalVisible(false);
+            setProdutoSelecionado(null);
+            carregarProdutos();
+          }
         }
-      }
-    ]
-  );
-};
+      ]
+    );
+  };
 
 
   return (

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, TextInput, Button, Alert, StyleSheet, Text } from 'react-native';
-import { getData, saveData } from '../services/storage';
+import { addProduto, addMovimentacao } from '../services/storage';
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState('');
@@ -8,56 +8,50 @@ export default function CadastroScreen() {
   const [preco, setPreco] = useState('');
 
   const cadastrarProduto = async () => {
-    if (!nome || !quantidade || !preco) {
-      Alert.alert("Preencha todos os campos");
-      return;
-    }
+  if (!nome || !quantidade || !preco) {
+    Alert.alert("Preencha todos os campos");
+    return;
+  }
 
-    const qtd = parseInt(quantidade);
-    const valor = parseFloat(preco);
+  const qtd = parseInt(quantidade);
+  const valor = parseFloat(preco);
 
-    if (isNaN(qtd) || qtd < 0) {
-      Alert.alert("Quantidade deve ser um número válido.");
-      return;
-    }
+  if (isNaN(qtd) || qtd < 0) {
+    Alert.alert("Quantidade deve ser um número válido.");
+    return;
+  }
 
-    if (isNaN(valor) || valor <= 0) {
-      Alert.alert("Preço deve ser um número válido e maior que zero.");
-      return;
-    }
+  if (isNaN(valor) || valor <= 0) {
+    Alert.alert("Preço deve ser um número válido e maior que zero.");
+    return;
+  }
 
-    const novoProduto = {
-      id: Date.now().toString(),
+  try {
+    
+    const produtoId = await addProduto({
       nome,
       quantidade: qtd,
       preco: valor
-    };
+    });
 
-    try {
-      const produtos = await getData('produtos') || [];
-      produtos.push(novoProduto);
-      await saveData('produtos', produtos);
+    
+    await addMovimentacao({
+      tipo: 'entrada',
+      produtoId,
+      produtoNome: nome,
+      quantidade: qtd
+    });
 
-      const movimentacoes = await getData('movimentacoes') || [];
-      movimentacoes.push({
-        id: Date.now().toString(),
-        tipo: 'entrada',
-        produtoId: novoProduto.id,
-        produtoNome: novoProduto.nome,
-        quantidade: qtd,
-        data: new Date().toISOString()
-      });
-      await saveData('movimentacoes', movimentacoes);
+    Alert.alert("Produto cadastrado com sucesso");
 
-      Alert.alert("Produto cadastrado com sucesso");
-
-      setNome('');
-      setQuantidade('');
-      setPreco('');
-    } catch (error) {
-      Alert.alert("Erro ao salvar dados", error.message);
-    }
-  };
+    
+    setNome('');
+    setQuantidade('');
+    setPreco('');
+  } catch (error) {
+    Alert.alert("Erro ao salvar no Firebase", error.message);
+  }
+};
 
   return (
     <View style={styles.container}>

@@ -1,37 +1,42 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import  {  useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { getData } from '../services/storage';
+import { getMovimentacoes, getProdutos } from '../services/storage';
 
 export default function MovimentacoesScreen() {
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [produtosMap, setProdutosMap] = useState({});
 
-  useFocusEffect(
-  useCallback(() => {
-    const carregarDados = async () => {
-      const movs = await getData('movimentacoes');
-      const produtos = await getData('produtos');
+    useFocusEffect(
+    useCallback(() => {
+      const carregarDados = async () => {
+        const movs = await getMovimentacoes();
+        const produtos = await getProdutos();
 
-      const mapProdutos = {};
-      produtos.forEach(p => {
-        mapProdutos[p.id] = p.nome;
-      });
+        const mapProdutos = {};
+        produtos.forEach(p => {
+          mapProdutos[p.id] = p.nome;
+        });
 
-      // ordena da mais recente para mais antiga
-      const ordenadas = movs.sort((a, b) => new Date(b.data) - new Date(a.data));
+        const ordenadas = movs
+          .filter(m => m.data)
+          .map(m => ({
+            ...m,
+            data: m.data.toDate ? m.data.toDate() : new Date(m.data)  // Conversão segura
+          }))
+          .sort((a, b) => b.data - a.data);
 
-      setProdutosMap(mapProdutos);
-      setMovimentacoes(ordenadas);
-    };
+        setProdutosMap(mapProdutos);
+        setMovimentacoes(ordenadas);
+      };
 
-    carregarDados();
-  }, [])
-);
+      carregarDados();
+    }, [])
+  );
 
   const renderItem = ({ item }) => {
     const nomeProduto = item.produtoNome || produtosMap[item.produtoId] || 'Desconhecido';
-    const dataFormatada = new Date(item.data).toLocaleString('pt-BR');
+    const dataFormatada = item.data.toLocaleString('pt-BR');
 
     return (
       <View style={styles.item}>
