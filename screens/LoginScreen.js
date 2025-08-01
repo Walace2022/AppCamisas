@@ -8,18 +8,18 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    setLoading(true);
-    try {
-      const response = await login(username, password);
-      if (response.success) {
-        navigation.replace('Home');
-      }
-    } catch (error) {
-      Alert.alert('Erro de login', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const response = await login(username, password); 
+    console.log('Login OK', response.user);
+    navigation.replace('Home');
+  } catch (error) {
+    Alert.alert('Erro de login', error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <View style={styles.container}>
